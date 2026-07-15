@@ -30,40 +30,48 @@ A highly resilient, secure, and modern microservices-based Car Service Managemen
 The system is split into **6 standalone Maven microservices** communicating over an internal network:
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor Client as Client (Browser Frontend)
-    participant GW as api-gateway (8765)
-    participant EU as eureka-discovery-server (8761)
-    participant UP as user-profile-service (8081)
-    participant OPS as car-service-operations (8082)
-    participant VAL as car-details-validation-service (8083)
-    participant KFK as Apache Kafka Broker (9092)
-    participant AUD as audit-service (8084)
-    participant DB as MySQL Databases
-
-    note over GW,AUD: 1. All microservices register with Eureka Discovery Server upon startup
-
-    Client->>GW: 2. Send Request (e.g., POST /save, GET /carservice/) with JWT
-    GW->>GW: 3. JwtAuthenticationFilter verifies token, enforces RBAC, & injects user headers
-    GW->>EU: 4. Lookup target service instances (operations/profiles) dynamically
-    EU-->>GW: 5. Return target service location details
-    GW->>OPS: 6. Forward request downstream with injected headers (X-Authenticated-Role/Id)
-
-    opt When Creating a Service (POST /save)
-        OPS->>UP: 7. Get Customer Profile by ID (via OpenFeign REST Client) to verify existence
-        UP-->>OPS: Return verification profile details
-        OPS->>VAL: 8. Validate plate number format (via OpenFeign REST Client)
-        VAL-->>OPS: Return regex match status (Boolean)
+graph LR
+    subgraph Client Apps
+        Client[Website Frontend]
     end
 
-    OPS->>DB: 9. Write transaction to database (via Spring Data JPA)
-    OPS->>KFK: 10. Publish audit event asynchronously to 'car-service-audit-events' topic
-    OPS-->>GW: 11. Return created record response
-    GW-->>Client: 12. Return JSON response to frontend (CORS-enabled)
+    subgraph Identity Provider
+        UP[User Profile Service]
+    end
 
-    KFK->>AUD: 13. Pull event stream asynchronously (Kafka Listener)
-    AUD->>DB: 14. Persist logs in audit database (via Spring Data JPA)
+    subgraph API Gateway
+        GW[API Gateway]
+    end
+
+    subgraph Microservices
+        OPS[Car Service Operations]
+        VAL[Validation Service]
+    end
+
+    subgraph Message Broker
+        MB[Kafka Broker]
+    end
+
+    subgraph Audit Logger
+        AUD[Audit Service]
+    end
+
+    Client --> GW
+    Client -->|1. Authenticate| UP
+    UP -->|2. JWT Credentials| GW
+
+    GW -->|Route| OPS
+    GW -->|Route| UP
+
+    OPS -->|Verify Customer| UP
+    OPS -->|Verify Plate Format| VAL
+
+    UP --> DB_UP[(User DB)]
+    OPS --> DB_OPS[(Operations DB)]
+
+    OPS -->|3. Publish Logs| MB
+    MB --> AUD
+    AUD --> DB_AUD[(Audit DB)]
 ```
 
 ### 1. [eureka-discovery-server](file:///c:/Users/aakri/OneDrive/Pictures/microservices/eureka-discovery-server) (port: 8761)
