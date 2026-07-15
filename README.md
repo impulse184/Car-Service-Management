@@ -142,10 +142,29 @@ Ensure you have the following installed on your machine:
 * **Apache Kafka** & **ZooKeeper**
 
 ### 2. Startup Kafka and ZooKeeper
-Start ZooKeeper followed by the Apache Kafka broker:
-1. Start ZooKeeper: Run the startup command inside your Kafka installation directory (e.g., `bin/zookeeper-server-start.bat config/zookeeper.properties` on Windows).
-2. Start the Kafka broker: Run the startup command (e.g., `bin/kafka-server-start.bat config/server.properties` on Windows).
-3. Keep these terminal sessions active while running the application.
+Start ZooKeeper followed by the Apache Kafka broker. Open a terminal in your Kafka installation directory:
+
+#### On Windows (Command Prompt / PowerShell)
+1. Start ZooKeeper in Terminal 1:
+   ```cmd
+   .\bin\windows\zookeeper-server-start.bat .\config\zookeeper.properties
+   ```
+2. Start the Kafka broker in Terminal 2:
+   ```cmd
+   .\bin\windows\kafka-server-start.bat .\config\server.properties
+   ```
+
+#### On Linux / macOS
+1. Start ZooKeeper in Terminal 1:
+   ```bash
+   ./bin/zookeeper-server-start.sh ./config/zookeeper.properties
+   ```
+2. Start the Kafka broker in Terminal 2:
+   ```bash
+   ./bin/kafka-server-start.sh ./config/server.properties
+   ```
+
+Keep both terminals open while running the application.
 
 ### 3. Startup the Microservices
 In your IDE (e.g. Spring Tool Suite / Eclipse), import all 6 Maven projects. Run them as **Spring Boot App** in the following order:
