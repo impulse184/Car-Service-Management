@@ -4,7 +4,7 @@ A highly resilient, secure, and modern microservices-based Car Service Managemen
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend Services
 * **Java 21 (JDK 21)**
@@ -25,7 +25,7 @@ A highly resilient, secure, and modern microservices-based Car Service Managemen
 
 ---
 
-## 🏗️ Microservices Architecture & Layout
+## Microservices Architecture & Layout
 
 The system is split into **6 standalone Maven microservices** communicating over an internal network:
 
@@ -40,7 +40,7 @@ sequenceDiagram
     participant VAL as car-details-validation-service (8083)
     participant KFK as Apache Kafka Broker (9092)
     participant AUD as audit-service (8084)
-    database DB as MySQL Databases
+    participant DB as MySQL Databases
 
     note over GW,AUD: 1. All microservices register with Eureka Discovery Server upon startup
 
@@ -66,25 +66,25 @@ sequenceDiagram
     AUD->>DB: 14. Persist logs in audit database (via Spring Data JPA)
 ```
 
-### 1. [eureka-discovery-server](file:///c:/Users/aakri/OneDrive/Pictures/microservices/eureka-discovery-server) (`port: 8761`)
+### 1. [eureka-discovery-server](file:///c:/Users/aakri/OneDrive/Pictures/microservices/eureka-discovery-server) (port: 8761)
 The central service registry. Every service registers itself here upon startup, enabling dynamic lookup and routing without hardcoded port mappings.
 
-### 2. [api-gateway](file:///c:/Users/aakri/OneDrive/Pictures/microservices/api-gateway) (`port: 8765`)
+### 2. [api-gateway](file:///c:/Users/aakri/OneDrive/Pictures/microservices/api-gateway) (port: 8765)
 The unified edge gateway. It performs the following duties:
 * Routes incoming client requests downstream.
 * Employs `JwtAuthenticationFilter` to validate JWT tokens.
-* Enforces **Role-Based Access Control (RBAC)** security policies.
+* Enforces Role-Based Access Control (RBAC) security policies.
 * Injects security headers (`X-Authenticated-User`, `X-Authenticated-Role`, `X-Authenticated-Id`) downstream.
 * Serves a consolidated Swagger UI aggregating all microservices docs on a single page.
 * Houses the `/auth/login` endpoint to verify passwords and issue signed JJWT tokens.
 
-### 3. [user-profile-service](file:///c:/Users/aakri/OneDrive/Pictures/microservices/user-profile-service) (`port: 8081`)
+### 3. [user-profile-service](file:///c:/Users/aakri/OneDrive/Pictures/microservices/user-profile-service) (port: 8081)
 Manages system user registrations, credentials, and roles.
 * Database: `carservice_user_db`
 * Passwords are encrypted using SHA-256 with salting and pepper.
 * Features a database seeder that automatically creates a default Admin user (`username: admin`, `password: adminpassword`) if the tables are empty on startup.
 
-### 4. [car-service-operations](file:///c:/Users/aakri/OneDrive/Pictures/microservices/car-service-operations) (`port: 8082`)
+### 4. [car-service-operations](file:///c:/Users/aakri/OneDrive/Pictures/microservices/car-service-operations) (port: 8082)
 The core transactional engine of the application.
 * Database: `carservice_ops_db`
 * Intercepts incoming requests to file, update, list, and delete vehicle service logs.
@@ -92,12 +92,12 @@ The core transactional engine of the application.
 * Verifies registration formats via Feign calls to `car-details-validation-service`.
 * Dispatches asynchronous auditable event payloads to Apache Kafka topics on execution.
 
-### 5. [car-details-validation-service](file:///c:/Users/aakri/OneDrive/Pictures/microservices/car-details-validation-service) (`port: 8083`)
+### 5. [car-details-validation-service](file:///c:/Users/aakri/OneDrive/Pictures/microservices/car-details-validation-service) (port: 8083)
 Enforces national license plate formats.
 * Matches values against: `^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$` (allowing format variants like `DL1CA1234` or `MH12AB1234`).
 * Strips spacing and enforces uppercase casing before checking.
 
-### 6. [audit-service](file:///c:/Users/aakri/OneDrive/Pictures/microservices/audit-service) (`port: 8084`)
+### 6. [audit-service](file:///c:/Users/aakri/OneDrive/Pictures/microservices/audit-service) (port: 8084)
 An asynchronous event processor.
 * Database: `carservice_audit_db`
 * Listens to the Kafka topic `car-service-audit-events`.
@@ -105,7 +105,7 @@ An asynchronous event processor.
 
 ---
 
-## 🔒 Security, Role Enforcements & Rules
+## Security, Role Enforcements & Rules
 
 ### Database separation (Non-overlapping sequential IDs)
 Unlike shared-table designs where IDs overlap between roles, users are split into three dedicated tables:
@@ -119,21 +119,21 @@ Each table maintains its own independent auto-increment sequence starting at `1`
 
 | Feature / Action | Admin | Mechanic | Customer |
 | :--- | :---: | :---: | :---: |
-| **Register Service Logs (POST)** | ✅ Yes | ❌ No | ❌ No |
-| **Delete Service Logs (DELETE)** | ✅ Yes | ❌ No | ❌ No |
-| **View All Service Logs (GET)** | ✅ Yes | ✅ Yes (Full History) | ❌ No (Own Only) |
-| **View Personal Logs (GET)** | ✅ Yes | ✅ Yes | ✅ Yes (Filtered to own ID) |
-| **Update Service Status (PUT)** | ✅ Yes (Any state) | ✅ Yes (Active states) | ❌ No |
-| **Revert COMPLETED status** | ✅ Yes | ❌ No (Read-Only lock) | ❌ No |
+| **Register Service Logs (POST)** | [Yes] | [No] | [No] |
+| **Delete Service Logs (DELETE)** | [Yes] | [No] | [No] |
+| **View All Service Logs (GET)** | [Yes] | [Yes] (Full History) | [No] (Own Only) |
+| **View Personal Logs (GET)** | [Yes] | [Yes] | [Yes] (Filtered to own ID) |
+| **Update Service Status (PUT)** | [Yes] (Any state) | [Yes] (Active states) | [No] |
+| **Revert COMPLETED status** | [Yes] | [No] (Read-Only lock) | [No] |
 
 ### Completed State Lock
 Once a service record is marked as `COMPLETED` (terminal workshop state):
-* **Mechanics** cannot change it. The dropdown is hidden in the UI and replaced with a lock icon (🔒), and backend requests to `/status` from a mechanic return `403 Forbidden`.
+* **Mechanics** cannot change it. The dropdown is hidden in the UI and replaced with a lock icon, and backend requests to `/status` from a mechanic return `403 Forbidden`.
 * **Admins** maintain override control and can revert the status back to any previous state (e.g. `IN_PROGRESS` or `PENDING`) if corrections are required.
 
 ---
 
-## 🚀 Setup & Running Guide
+## Setup & Running Guide
 
 ### 1. Prerequisites
 Ensure you have the following installed on your machine:
@@ -142,14 +142,14 @@ Ensure you have the following installed on your machine:
 * **Apache Kafka** & **ZooKeeper**
 
 ### 2. Startup Kafka and ZooKeeper
-We have provided a double-click utility script inside the project directory:
-1. Double-click the **`start-kafka-zookeeper.bat`** script.
-2. It will open two separate terminal windows initiating ZooKeeper (port `2181`) followed by the Apache Kafka broker (port `9092`).
-3. Keep these windows open while running the application.
+Start ZooKeeper followed by the Apache Kafka broker:
+1. Start ZooKeeper: Run the startup command inside your Kafka installation directory (e.g., `bin/zookeeper-server-start.bat config/zookeeper.properties` on Windows).
+2. Start the Kafka broker: Run the startup command (e.g., `bin/kafka-server-start.bat config/server.properties` on Windows).
+3. Keep these terminal sessions active while running the application.
 
 ### 3. Startup the Microservices
 In your IDE (e.g. Spring Tool Suite / Eclipse), import all 6 Maven projects. Run them as **Spring Boot App** in the following order:
-1. **`eureka-discovery-server`** (Wait for Dashboard to launch on [http://localhost:8761](http://localhost:8761))
+1. **`eureka-discovery-server`** (Wait for Dashboard to launch on http://localhost:8761)
 2. **`user-profile-service`**
 3. **`api-gateway`**
 4. **`car-details-validation-service`**
@@ -165,7 +165,7 @@ In your IDE (e.g. Spring Tool Suite / Eclipse), import all 6 Maven projects. Run
 
 ### 5. Accessing Swagger Documentation
 To test or interact with endpoints programmatically, open:
-👉 **[http://localhost:8765/swagger-ui.html](http://localhost:8765/swagger-ui.html)**
+[http://localhost:8765/swagger-ui.html](http://localhost:8765/swagger-ui.html)
 * Select the service from the dropdown on the top-right corner to toggle API definitions.
 * Paste your bearer JWT token into the **Authorize** lock to make authenticated calls.
 
