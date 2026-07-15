@@ -1,0 +1,26 @@
+# Maven Build Files
+**/target/
+**/target-eclipse/
+
+# Eclipse IDE Metadata
+.metadata/
+.recommenders/
+**/bin/
+**/.settings/
+**/.recommenders/
+
+# IntelliJ IDEA Metadata
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Visual Studio Code Metadata
+.vscode/
+
+# Local Operating System Files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log

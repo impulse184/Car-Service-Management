@@ -1,0 +1,27 @@
+server:
+  port: 8765
+
+spring:
+  application:
+    name: api-gateway
+
+# Swagger Configuration
+springdoc:
+  enable-native-support: true
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    persistAuthorization: true
+    operationsSorter: method
+    urls:
+      - name: User Profile Service
+        url: /users/v3/api-docs
+      - name: Car Service Operations
+        url: /carservice/v3/api-docs
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
