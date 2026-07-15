@@ -63,8 +63,8 @@ graph LR
     GW -->|Route| OPS
     GW -->|Route| UP
 
-    OPS -->|Verify Customer| UP
-    OPS -->|Verify Plate Format| VAL
+    OPS -->|Verify Customer via OpenFeign| UP
+    OPS -->|Verify Plate Format via OpenFeign| VAL
 
     UP --> DB_UP[(User DB)]
     OPS --> DB_OPS[(Operations DB)]
