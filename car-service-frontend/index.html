@@ -605,6 +605,9 @@
             <div class="nav-link" onclick="switchPanel('profiles-panel')" id="nav-profiles-panel">
                 <i class="fa-solid fa-users-gear"></i> System Profiles
             </div>
+            <div class="nav-link" onclick="switchPanel('actuator-panel')" id="nav-actuator-panel" style="display: none;">
+                <i class="fa-solid fa-server"></i> Health & Actuator
+            </div>
             <div class="nav-link logout-btn" onclick="logout()">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
             </div>
@@ -849,6 +852,32 @@
             </div>
         </div>
 
+        <!-- PANEL 5: SYSTEM HEALTH & ACTUATOR -->
+        <div id="panel-actuator-panel" class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 1.1rem; color: var(--text-primary);">Microservice Actuator Health Status</h3>
+                <button class="btn btn-primary" onclick="checkAllServicesHealth()">
+                    <i class="fa-solid fa-arrows-rotate"></i> Refresh Health Statuses
+                </button>
+            </div>
+
+            <!-- Health Cards Grid -->
+            <div class="widgets-grid" id="actuator-cards-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); margin-bottom: 30px;">
+                <!-- Dynamically populated by JS -->
+            </div>
+
+            <!-- Raw Actuator JSON Explorer -->
+            <div class="glass-card">
+                <div class="card-header" style="justify-content: space-between; align-items: center;">
+                    <div class="card-title" id="actuator-raw-title">
+                        <i class="fa-solid fa-code" style="color: var(--accent-primary);"></i> Spring Boot Actuator Endpoint JSON Explorer
+                    </div>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Click any endpoint button above to inspect live JSON payload</span>
+                </div>
+                <pre id="actuator-raw-json" style="background: #0f172a; color: #38bdf8; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 0.85rem; max-height: 400px; overflow: auto; border: 1px solid var(--card-border);">Select an actuator endpoint to inspect live response...</pre>
+            </div>
+        </div>
+
     </main>
 
     <script>
@@ -929,19 +958,23 @@
             const navLogs = document.getElementById("nav-logs-panel");
             const navProfiles = document.getElementById("nav-profiles-panel");
             const navRequest = document.getElementById("nav-request-form");
+            const navActuator = document.getElementById("nav-actuator-panel");
 
             if (role === "admin") {
                 navLogs.style.display = "flex";
                 navProfiles.style.display = "flex";
                 navRequest.style.display = "flex";
+                if (navActuator) navActuator.style.display = "flex";
             } else if (role === "mechanic") {
                 navLogs.style.display = "none";
                 navProfiles.style.display = "none";
                 navRequest.style.display = "none";
+                if (navActuator) navActuator.style.display = "none";
             } else { // customer
                 navLogs.style.display = "none";
                 navProfiles.style.display = "none";
                 navRequest.style.display = "none";
+                if (navActuator) navActuator.style.display = "none";
             }
 
             switchPanel('dashboard');
@@ -1003,6 +1036,11 @@
                 case "profiles-panel":
                     titleElement.innerText = "User Profiles";
                     subtitleElement.innerText = "Manage system users, administrators, and mechanics";
+                    break;
+                case "actuator-panel":
+                    titleElement.innerText = "Health & Actuator Metrics";
+                    subtitleElement.innerText = "Live status monitoring and Spring Boot Actuator management endpoints";
+                    checkAllServicesHealth();
                     break;
             }
         }
@@ -1439,6 +1477,102 @@
         function logout() {
             showNotification("Logged out successfully.", "info");
             showLogin();
+        }
+
+        // Spring Boot Actuator Health & Endpoint Explorers
+        const SERVICES_CONFIG = [
+            { id: "gateway", name: "API Gateway", port: 8765, healthUrl: "http://localhost:8765/actuator/health", baseUrl: "http://localhost:8765/actuator" },
+            { id: "users", name: "User Profile Service", port: 8081, healthUrl: "http://localhost:8081/users/actuator/health", baseUrl: "http://localhost:8081/users/actuator" },
+            { id: "ops", name: "Car Service Operations", port: 8082, healthUrl: "http://localhost:8082/carservice/actuator/health", baseUrl: "http://localhost:8082/carservice/actuator" },
+            { id: "val", name: "Car Details Validation", port: 8083, healthUrl: "http://localhost:8083/actuator/health", baseUrl: "http://localhost:8083/actuator" },
+            { id: "audit", name: "Audit Logging Service", port: 8084, healthUrl: "http://localhost:8084/actuator/health", baseUrl: "http://localhost:8084/actuator" },
+            { id: "eureka", name: "Eureka Discovery Server", port: 8761, healthUrl: "http://localhost:8761/actuator/health", baseUrl: "http://localhost:8761/actuator" }
+        ];
+
+        async function checkAllServicesHealth() {
+            const container = document.getElementById("actuator-cards-grid");
+            if (!container) return;
+
+            container.innerHTML = SERVICES_CONFIG.map(svc => `
+                <div class="glass-card" id="actuator-card-${svc.id}">
+                    <div class="card-header" style="justify-content: space-between; align-items: center;">
+                        <div class="card-title" style="font-size: 1.05rem;">
+                            <i class="fa-solid fa-server" style="color: var(--accent-primary);"></i> ${svc.name}
+                        </div>
+                        <span id="health-badge-${svc.id}" class="status-badge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Checking
+                        </span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">Port: <strong>${svc.port}</strong></p>
+                    <div id="health-details-${svc.id}" style="font-size: 0.85rem; background: rgba(0,0,0,0.03); padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--card-border);">
+                        Connecting to actuator...
+                    </div>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="fetchRawActuator('${svc.id}', 'health')">Health</button>
+                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="fetchRawActuator('${svc.id}', 'metrics')">Metrics</button>
+                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="fetchRawActuator('${svc.id}', 'env')">Env</button>
+                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="fetchRawActuator('${svc.id}', 'beans')">Beans</button>
+                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="fetchRawActuator('${svc.id}', 'mappings')">Mappings</button>
+                    </div>
+                </div>
+            `).join("");
+
+            for (const svc of SERVICES_CONFIG) {
+                try {
+                    const res = await fetch(svc.healthUrl, { headers: { "Authorization": token ? `Bearer ${token}` : "" } });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const badge = document.getElementById(`health-badge-${svc.id}`);
+                        const details = document.getElementById(`health-details-${svc.id}`);
+                        if (badge) {
+                            badge.style.background = "rgba(16, 185, 129, 0.15)";
+                            badge.style.color = "var(--success)";
+                            badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${data.status || 'UP'}`;
+                        }
+                        if (details) {
+                            let componentsText = [];
+                            if (data.components) {
+                                for (let c in data.components) {
+                                    componentsText.push(`<strong>${c}:</strong> ${data.components[c].status}`);
+                                }
+                            }
+                            details.innerHTML = componentsText.length > 0 ? componentsText.join(" | ") : `Status: <strong>${data.status}</strong>`;
+                        }
+                    } else {
+                        throw new Error(`HTTP ${res.status}`);
+                    }
+                } catch (e) {
+                    const badge = document.getElementById(`health-badge-${svc.id}`);
+                    const details = document.getElementById(`health-details-${svc.id}`);
+                    if (badge) {
+                        badge.style.background = "rgba(239, 68, 68, 0.15)";
+                        badge.style.color = "var(--danger)";
+                        badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> DOWN`;
+                    }
+                    if (details) {
+                        details.innerHTML = `<span style="color: var(--danger);">Service offline or port closed</span>`;
+                    }
+                }
+            }
+        }
+
+        async function fetchRawActuator(serviceId, endpoint) {
+            const svc = SERVICES_CONFIG.find(s => s.id === serviceId);
+            if (!svc) return;
+            const targetUrl = `${svc.baseUrl}/${endpoint}`;
+            const displayEl = document.getElementById("actuator-raw-json");
+            const titleEl = document.getElementById("actuator-raw-title");
+
+            titleEl.innerHTML = `<i class="fa-solid fa-code" style="color: var(--accent-primary);"></i> ${svc.name} — <code>/actuator/${endpoint}</code>`;
+            displayEl.innerText = "Fetching raw payload from actuator...";
+
+            try {
+                const res = await fetch(targetUrl, { headers: { "Authorization": token ? `Bearer ${token}` : "" } });
+                const data = await res.json();
+                displayEl.innerText = JSON.stringify(data, null, 2);
+            } catch (err) {
+                displayEl.innerText = `Error fetching ${targetUrl}: ${err.message}`;
+            }
         }
     </script>
 </body>

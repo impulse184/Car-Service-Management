@@ -32,7 +32,8 @@ public class JwtAuthenticationFilter implements HandlerFilterFunction<ServerResp
             (path.contains("/users/userprofile") && (method.equalsIgnoreCase("POST") || method.equalsIgnoreCase("GET"))) ||
             path.contains("/swagger-ui") || 
             path.contains("/v3/api-docs") || 
-            path.contains("/webjars")) {
+            path.contains("/webjars") ||
+            path.contains("/actuator")) {
             
             return next.handle(request);
         }

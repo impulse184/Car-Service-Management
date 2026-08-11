@@ -34,3 +34,16 @@ springdoc:
     path: /swagger-ui.html
     operationsSorter: method
     persistAuthorization: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
