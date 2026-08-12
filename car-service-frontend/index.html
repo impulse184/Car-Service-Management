@@ -1481,12 +1481,12 @@
 
         // Spring Boot Actuator Health & Endpoint Explorers
         const SERVICES_CONFIG = [
-            { id: "gateway", name: "API Gateway", port: 8765, healthUrls: ["http://localhost:8765/actuator/health"], baseUrls: ["http://localhost:8765/actuator"] },
-            { id: "users", name: "User Profile Service", port: 8081, healthUrls: ["http://localhost:8081/actuator/health", "http://localhost:8765/users/actuator/health", "http://localhost:8081/users/actuator/health"], baseUrls: ["http://localhost:8081/actuator", "http://localhost:8765/users/actuator"] },
-            { id: "ops", name: "Car Service Operations", port: 8082, healthUrls: ["http://localhost:8082/actuator/health", "http://localhost:8765/carservice/actuator/health", "http://localhost:8082/carservice/actuator/health"], baseUrls: ["http://localhost:8082/actuator", "http://localhost:8765/carservice/actuator"] },
-            { id: "val", name: "Car Details Validation", port: 8083, healthUrls: ["http://localhost:8083/actuator/health", "http://localhost:8765/carvalidation/actuator/health"], baseUrls: ["http://localhost:8083/actuator", "http://localhost:8765/carvalidation/actuator"] },
-            { id: "audit", name: "Audit Logging Service", port: 8084, healthUrls: ["http://localhost:8084/actuator/health", "http://localhost:8765/audits/actuator/health"], baseUrls: ["http://localhost:8084/actuator", "http://localhost:8765/audits/actuator"] },
-            { id: "eureka", name: "Eureka Discovery Server", port: 8761, healthUrls: ["http://localhost:8761/actuator/health"], baseUrls: ["http://localhost:8761/actuator"] }
+            { id: "gateway", name: "API Gateway", port: 8765, healthUrl: "http://localhost:8765/actuator/health", baseUrl: "http://localhost:8765/actuator" },
+            { id: "users", name: "User Profile Service", port: 8081, healthUrl: "http://localhost:8081/actuator/health", baseUrl: "http://localhost:8081/actuator" },
+            { id: "ops", name: "Car Service Operations", port: 8082, healthUrl: "http://localhost:8082/actuator/health", baseUrl: "http://localhost:8082/actuator" },
+            { id: "val", name: "Car Details Validation", port: 8083, healthUrl: "http://localhost:8083/actuator/health", baseUrl: "http://localhost:8083/actuator" },
+            { id: "audit", name: "Audit Logging Service", port: 8084, healthUrl: "http://localhost:8084/actuator/health", baseUrl: "http://localhost:8084/actuator" },
+            { id: "eureka", name: "Eureka Discovery Server", port: 8761, healthUrl: "http://localhost:8761/actuator/health", baseUrl: "http://localhost:8761/actuator" }
         ];
 
         async function checkAllServicesHealth() {
@@ -1518,37 +1518,30 @@
             `).join("");
 
             for (const svc of SERVICES_CONFIG) {
-                let isUp = false;
-                for (const url of svc.healthUrls) {
-                    try {
-                        const res = await fetch(url);
-                        if (res.ok) {
-                            const data = await res.json();
-                            const badge = document.getElementById(`health-badge-${svc.id}`);
-                            const details = document.getElementById(`health-details-${svc.id}`);
-                            if (badge) {
-                                badge.style.background = "rgba(16, 185, 129, 0.15)";
-                                badge.style.color = "var(--success)";
-                                badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${data.status || 'UP'}`;
-                            }
-                            if (details) {
-                                let componentsText = [];
-                                if (data.components) {
-                                    for (let c in data.components) {
-                                        componentsText.push(`<strong>${c}:</strong> ${data.components[c].status}`);
-                                    }
-                                }
-                                details.innerHTML = componentsText.length > 0 ? componentsText.join(" | ") : `Status: <strong>${data.status}</strong>`;
-                            }
-                            isUp = true;
-                            break;
+                try {
+                    const res = await fetch(svc.healthUrl);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const badge = document.getElementById(`health-badge-${svc.id}`);
+                        const details = document.getElementById(`health-details-${svc.id}`);
+                        if (badge) {
+                            badge.style.background = "rgba(16, 185, 129, 0.15)";
+                            badge.style.color = "var(--success)";
+                            badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${data.status || 'UP'}`;
                         }
-                    } catch (e) {
-                        // continue to next URL fallback
+                        if (details) {
+                            let componentsText = [];
+                            if (data.components) {
+                                for (let c in data.components) {
+                                    componentsText.push(`<strong>${c}:</strong> ${data.components[c].status}`);
+                                }
+                            }
+                            details.innerHTML = componentsText.length > 0 ? componentsText.join(" | ") : `Status: <strong>${data.status}</strong>`;
+                        }
+                    } else {
+                        throw new Error(`HTTP ${res.status}`);
                     }
-                }
-
-                if (!isUp) {
+                } catch (e) {
                     const badge = document.getElementById(`health-badge-${svc.id}`);
                     const details = document.getElementById(`health-details-${svc.id}`);
                     if (badge) {
@@ -1572,20 +1565,18 @@
             titleEl.innerHTML = `<i class="fa-solid fa-code" style="color: var(--accent-primary);"></i> ${svc.name} — <code>/actuator/${endpoint}</code>`;
             displayEl.innerText = "Fetching raw payload from actuator...";
 
-            for (const baseUrl of svc.baseUrls) {
-                const targetUrl = `${baseUrl}/${endpoint}`;
-                try {
-                    const res = await fetch(targetUrl);
-                    if (res.ok) {
-                        const data = await res.json();
-                        displayEl.innerText = JSON.stringify(data, null, 2);
-                        return;
-                    }
-                } catch (err) {
-                    // try fallback url
+            const targetUrl = `${svc.baseUrl}/${endpoint}`;
+            try {
+                const res = await fetch(targetUrl);
+                if (res.ok) {
+                    const data = await res.json();
+                    displayEl.innerText = JSON.stringify(data, null, 2);
+                } else {
+                    displayEl.innerText = `Unable to fetch ${targetUrl}: HTTP ${res.status}`;
                 }
+            } catch (err) {
+                displayEl.innerText = `Unable to connect to ${svc.name} actuator endpoints. Make sure the service is running.`;
             }
-            displayEl.innerText = `Unable to connect to ${svc.name} actuator endpoints. Make sure the service is running.`;
         }
     </script>
 </body>

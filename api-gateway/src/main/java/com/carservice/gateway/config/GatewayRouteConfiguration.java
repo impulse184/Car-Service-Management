@@ -56,14 +56,4 @@ public class GatewayRouteConfiguration {
                 .filter(LoadBalancerFilterFunctions.lb("user-profile-service")) 
                 .build();
     }
-
-    // Route configuration for Car Validation Service
-    @Bean
-    public RouterFunction<ServerResponse> validationServiceRoute() {
-        return GatewayRouterFunctions.route("validation-service-route")
-                .route(path("/carvalidation").or(path("/carvalidation/**")), HandlerFunctions.http())
-                .filter(jwtFilter)
-                .filter(LoadBalancerFilterFunctions.lb("car-details-validation-service"))
-                .build();
-    }
 }
