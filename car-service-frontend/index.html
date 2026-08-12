@@ -1482,8 +1482,8 @@
         // Spring Boot Actuator Health & Endpoint Explorers
         const SERVICES_CONFIG = [
             { id: "gateway", name: "API Gateway", port: 8765, healthUrl: "http://localhost:8765/actuator/health", baseUrl: "http://localhost:8765/actuator" },
-            { id: "users", name: "User Profile Service", port: 8081, healthUrl: "http://localhost:8081/actuator/health", baseUrl: "http://localhost:8081/actuator" },
-            { id: "ops", name: "Car Service Operations", port: 8082, healthUrl: "http://localhost:8082/actuator/health", baseUrl: "http://localhost:8082/actuator" },
+            { id: "users", name: "User Profile Service", port: 8081, healthUrl: "http://localhost:8081/users/actuator/health", baseUrl: "http://localhost:8081/users/actuator" },
+            { id: "ops", name: "Car Service Operations", port: 8082, healthUrl: "http://localhost:8082/carservice/actuator/health", baseUrl: "http://localhost:8082/carservice/actuator" },
             { id: "val", name: "Car Details Validation", port: 8083, healthUrl: "http://localhost:8083/actuator/health", baseUrl: "http://localhost:8083/actuator" },
             { id: "audit", name: "Audit Logging Service", port: 8084, healthUrl: "http://localhost:8084/actuator/health", baseUrl: "http://localhost:8084/actuator" },
             { id: "eureka", name: "Eureka Discovery Server", port: 8761, healthUrl: "http://localhost:8761/actuator/health", baseUrl: "http://localhost:8761/actuator" }
