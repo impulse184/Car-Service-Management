@@ -25,9 +25,12 @@ public class ServiceSecurityFilter implements Filter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        // 1. Allow CORS preflight OPTIONS requests
+        // 1. Handle CORS preflight OPTIONS requests with 200 OK and CORS headers
         if (method.equalsIgnoreCase("OPTIONS")) {
-            chain.doFilter(req, res);
+            response.setHeader("Access-Control-Allow-Origin", "*");
+            response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            response.setHeader("Access-Control-Allow-Headers", "*");
+            response.setStatus(HttpServletResponse.SC_OK);
             return;
         }
 
@@ -37,7 +40,7 @@ public class ServiceSecurityFilter implements Filter {
             return;
         }
 
-        // 3. Enforce authentication for all other requests (including Actuator & direct URLs)
+        // 3. Require valid JWT Bearer token or Gateway authentication header for ALL other endpoints
         String authHeader = request.getHeader("Authorization");
         String gatewayRoleHeader = request.getHeader("X-Authenticated-Role");
 
