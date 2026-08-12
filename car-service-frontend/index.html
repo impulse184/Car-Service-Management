@@ -1521,7 +1521,7 @@
                 let isUp = false;
                 for (const url of svc.healthUrls) {
                     try {
-                        const res = await fetch(url, { headers: { "Authorization": token ? `Bearer ${token}` : "" } });
+                        const res = await fetch(url);
                         if (res.ok) {
                             const data = await res.json();
                             const badge = document.getElementById(`health-badge-${svc.id}`);
@@ -1575,7 +1575,7 @@
             for (const baseUrl of svc.baseUrls) {
                 const targetUrl = `${baseUrl}/${endpoint}`;
                 try {
-                    const res = await fetch(targetUrl, { headers: { "Authorization": token ? `Bearer ${token}` : "" } });
+                    const res = await fetch(targetUrl);
                     if (res.ok) {
                         const data = await res.json();
                         displayEl.innerText = JSON.stringify(data, null, 2);
