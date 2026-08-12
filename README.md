@@ -1,204 +1,265 @@
 # Car Operations Management System
 
-A highly resilient, secure, and modern microservices-based Car Service Management System. The application manages vehicle service registrations, role-based workflows (Admin, Mechanic, Customer), real-time Kafka auditing, and displays operational metrics through a premium glassmorphic frontend interface.
+A highly resilient, secure, and modern microservices-based Car Service Management System. The application manages vehicle service registrations, role-based workflows (Admin, Mechanic, Customer), real-time Kafka auditing, service-level security, and displays live health metrics through an Admin Actuator Dashboard and modern glassmorphic frontend interface.
 
 ---
 
-## Technology Stack
+## 🎨 System Architecture Diagram
+
+![System Architecture Diagram](architecture_diagram.png)
+
+### Architectural Flow & Components
+
+```mermaid
+graph TD
+    subgraph Client Layer
+        UI[Web Frontend Dashboard]
+    end
+
+    subgraph Edge Layer
+        GW[API Gateway :8765<br/>(JWT Auth, RBAC, CORS, Swagger Aggregator)]
+    end
+
+    subgraph Service Discovery
+        EUK[Eureka Discovery Server :8761]
+    end
+
+    subgraph Core Microservices Layer
+        UP[User Profile Service :8081<br/>(Service-Level JWT Security Filter)]
+        OPS[Car Service Operations :8082<br/>(Service-Level JWT Security Filter)]
+        VAL[Car Details Validation Service :8083<br/>(Service-Level JWT Security Filter)]
+        AUD[Audit Logging Service :8084<br/>(Service-Level JWT Security Filter)]
+    end
+
+    subgraph Persistence Layer
+        DB_UP[(carservice_user_db)]
+        DB_OPS[(carservice_ops_db)]
+        DB_AUD[(carservice_audit_db)]
+    end
+
+    subgraph Event Streaming
+        KFK[Apache Kafka Broker :9092<br/>(Topic: car-service-audit-events)]
+    end
+
+    subgraph Actuator Health Monitoring
+        ACT[Admin Actuator Panel<br/>(Live Status Cards & JSON Explorer)]
+    end
+
+    %% Routing & Client Interactions
+    UI -->|HTTP Requests| GW
+    GW -->|Route /users| UP
+    GW -->|Route /carservice| OPS
+    GW -->|Route /audits| AUD
+
+    %% Discovery
+    UP -.->|Register & Heartbeat| EUK
+    OPS -.->|Register & Heartbeat| EUK
+    VAL -.->|Register & Heartbeat| EUK
+    AUD -.->|Register & Heartbeat| EUK
+    GW -.->|Lookup Microservices| EUK
+
+    %% Inter-Service Communication via OpenFeign
+    OPS -->|OpenFeign: Verify Customer| UP
+    OPS -->|OpenFeign: Validate Plate Format| VAL
+
+    %% Event-Driven Auditing via Kafka
+    OPS -->|Publish Audit Event| KFK
+    KFK -->|Consume Audit Event| AUD
+
+    %% Persistence
+    UP --> DB_UP
+    OPS --> DB_OPS
+    AUD --> DB_AUD
+
+    %% Actuator Monitoring
+    UI -.->|Monitor /actuator/health| ACT
+    ACT -.->|Poll Health & Metrics| GW
+    ACT -.->|Poll Direct Actuators| UP
+    ACT -.->|Poll Direct Actuators| OPS
+    ACT -.->|Poll Direct Actuators| VAL
+    ACT -.->|Poll Direct Actuators| AUD
+    ACT -.->|Poll Direct Actuators| EUK
+```
+
+---
+
+## 🛠️ Technology Stack
 
 ### Backend Services
 * **Java 21 (JDK 21)**
 * **Spring Boot (v3.3.1)**
 * **Spring Cloud Routing & Gateway (MVC)**
 * **Spring Cloud Netflix Eureka Discovery Server**
-* **Spring Cloud OpenFeign (Declarative REST Clients)**
-* **Spring Data JPA & Hibernate**
-* **MySQL Database**
-* **Apache Kafka & ZooKeeper (Event-Driven Logging & Audits)**
-* **Springdoc OpenAPI 3 (Swagger UI)**
-* **JJWT (Java JWT for Security & Authorization)**
+* **Spring Cloud OpenFeign (Declarative Synchronous REST Clients)**
+* **Spring Boot Starter Actuator (Production-grade Monitoring & Management)**
+* **Spring Data JPA & Hibernate ORM**
+* **MySQL Database 8.0**
+* **Apache Kafka 3.7 & ZooKeeper (Event-Driven Asynchronous Logging & Auditing)**
+* **Springdoc OpenAPI 3 (Swagger UI Aggregator)**
+* **JJWT 0.12.5 (Java JWT for Security, Verification & Authorization)**
 
 ### Frontend Application
-* **HTML5 & Vanilla CSS3** (Premium Dark-themed Glassmorphism UI)
-* **Vanilla JavaScript** (Reactive State Management, Cached API lookups, and Dynamic Dropdowns)
+* **HTML5 & Vanilla CSS3** (Dark-themed Glassmorphism Design System)
+* **Vanilla JavaScript** (Reactive State Management, Actuator Explorers & Dynamic State Rendering)
 * **FontAwesome 6.4.0** (Icons)
 
 ---
 
-## Microservices Architecture & Layout
+## 🧩 Microservices Overview
 
-The system is split into **6 standalone Maven microservices** communicating over an internal network:
+The application comprises **6 independent, container-ready Maven microservices**:
 
-```mermaid
-graph LR
-    subgraph Client Apps
-        Client[Website Frontend]
-    end
-
-    subgraph Identity Provider
-        UP[User Profile Service]
-    end
-
-    subgraph API Gateway
-        GW[API Gateway]
-    end
-
-    subgraph Microservices
-        OPS[Car Service Operations]
-        VAL[Validation Service]
-    end
-
-    subgraph Message Broker
-        MB[Kafka Broker]
-    end
-
-    subgraph Audit Logger
-        AUD[Audit Service]
-    end
-
-    Client --> GW
-    Client -->|1. Authenticate| UP
-    UP -->|2. JWT Credentials| GW
-
-    GW -->|Route| OPS
-    GW -->|Route| UP
-
-    OPS -->|Verify User via OpenFeign| UP
-    OPS -->|Verify Plate Format via OpenFeign| VAL
-
-    UP --> DB_UP[(User DB)]
-    OPS --> DB_OPS[(Operations DB)]
-
-    OPS -->|3. Publish Logs| MB
-    MB --> AUD
-    AUD --> DB_AUD[(Audit DB)]
-```
-
-### 1. [eureka-discovery-server](file:///c:/Users/aakri/OneDrive/Pictures/microservices/eureka-discovery-server) (port: 8761)
-The central service registry. Every service registers itself here upon startup, enabling dynamic lookup and routing without hardcoded port mappings.
-
-### 2. [api-gateway](file:///c:/Users/aakri/OneDrive/Pictures/microservices/api-gateway) (port: 8765)
-The unified edge gateway. It performs the following duties:
-* Routes incoming client requests downstream.
-* Employs `JwtAuthenticationFilter` to validate JWT tokens.
-* Enforces Role-Based Access Control (RBAC) security policies.
-* Injects security headers (`X-Authenticated-User`, `X-Authenticated-Role`, `X-Authenticated-Id`) downstream.
-* Serves a consolidated Swagger UI aggregating all microservices docs on a single page.
-* Houses the `/auth/login` endpoint to verify passwords and issue signed JJWT tokens.
-
-### 3. [user-profile-service](file:///c:/Users/aakri/OneDrive/Pictures/microservices/user-profile-service) (port: 8081)
-Manages system user registrations, credentials, and roles.
-* Database: `carservice_user_db`
-* Passwords are encrypted using SHA-256 with salting and pepper.
-* Features a database seeder that automatically creates a default Admin user (`username: admin`, `password: adminpassword`) if the tables are empty on startup.
-
-### 4. [car-service-operations](file:///c:/Users/aakri/OneDrive/Pictures/microservices/car-service-operations) (port: 8082)
-The core transactional engine of the application.
-* Database: `carservice_ops_db`
-* Intercepts incoming requests to file, update, list, and delete vehicle service logs.
-* Verifies customer validity via Feign calls to `user-profile-service`.
-* Verifies registration formats via Feign calls to `car-details-validation-service`.
-* Dispatches asynchronous auditable event payloads to Apache Kafka topics on execution.
-
-### 5. [car-details-validation-service](file:///c:/Users/aakri/OneDrive/Pictures/microservices/car-details-validation-service) (port: 8083)
-Enforces national license plate formats.
-* Matches values against: `^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$` (allowing format variants like `DL1CA1234` or `MH12AB1234`).
-* Strips spacing and enforces uppercase casing before checking.
-
-### 6. [audit-service](file:///c:/Users/aakri/OneDrive/Pictures/microservices/audit-service) (port: 8084)
-An asynchronous event processor.
-* Database: `carservice_audit_db`
-* Listens to the Kafka topic `car-service-audit-events`.
-* Consumes validation outcomes (successes, rejections, deletes, status updates) and writes them as persistent logs to MySQL.
+| Microservice | Port | Database / Tech | Core Responsibilities |
+| :--- | :---: | :--- | :--- |
+| **`eureka-discovery-server`** | `8761` | Eureka Server | Central service registry & active instance cluster tracking |
+| **`api-gateway`** | `8765` | Gateway MVC, JJWT | Single entry point, JWT validation, RBAC, CORS handling & Swagger UI aggregator |
+| **`user-profile-service`** | `8081` | MySQL (`carservice_user_db`) | User/Customer/Mechanic/Admin profiles, password hashing, seeder |
+| **`car-service-operations`** | `8082` | MySQL (`carservice_ops_db`), OpenFeign, Kafka Producer | Core business engine, vehicle service bookings, status transitions & audit publishing |
+| **`car-details-validation-service`** | `8083` | Regex Engine | Validates license plate formats (`^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$`) |
+| **`audit-service`** | `8084` | MySQL (`carservice_audit_db`), Kafka Consumer | Asynchronously consumes audit logs from Kafka and saves persistent history |
 
 ---
 
-## Security, Role Enforcements & Rules
+## 🔒 Dual-Layer Security Architecture
 
-### Database separation (Non-overlapping sequential IDs)
-Unlike shared-table designs where IDs overlap between roles, users are split into three dedicated tables:
+The application implements a robust **Dual-Layer Defense-in-Depth Security Model**:
+
+```
+[ Client Request ] ──► [ Layer 1: Edge Gateway Filter ] ──► [ Layer 2: Service-Level Filter ] ──► [ Business Logic ]
+```
+
+### Layer 1: Edge Gateway Security (`api-gateway`)
+* **`JwtAuthenticationFilter`**: Intercepts all incoming client requests at port `8765`.
+* **JWT Signature & Expiration Check**: Verifies cryptographic signatures (`HMAC-SHA256`) and checks token freshness.
+* **Role-Based Access Control (RBAC)**: Enforces endpoints based on claims (`ROLE_ADMIN`, `ROLE_MECHANIC`, `ROLE_CUSTOMER`).
+* **Header Injection**: Extracts token payload and injects verified headers (`X-Authenticated-User`, `X-Authenticated-Role`, `X-Authenticated-Id`) downstream.
+
+### Layer 2: Service-Level Security (`ServiceSecurityFilter`)
+* Implemented via custom `ServiceSecurityFilter` and `JwtUtil` across downstream microservices (`user-profile-service`, `car-service-operations`, `audit-service`, `car-details-validation-service`).
+* **Direct Access Rejection**: Rejects any direct request bypassing the Gateway without a valid `Authorization: Bearer <token>` or Gateway context header with **`HTTP 401 Unauthorized`**:
+  ```text
+  Service-Level Security: Unauthorized direct access attempt detected.
+  ```
+* **CORS Preflight Support**: Responds to HTTP `OPTIONS` preflight requests with `200 OK` and `Access-Control-Allow-Origin: *` for web dashboard integration.
+
+---
+
+## 📊 Health Monitoring & Actuator Dashboard
+
+Spring Boot Actuator is integrated into **all 6 microservices** to provide full operational visibility:
+
+### 1. Actuator Configuration
+Each service exposes management endpoints via `application.properties`/`application.yml`:
+* Management Endpoint Exposure: `management.endpoints.web.exposure.include=*`
+* Detailed Health Indicators: `management.endpoint.health.show-details=always`
+* Component Monitoring: MySQL database status (`db`), Disk space (`diskSpace`), Service registry status (`discoveryComposite`), and Ping (`ping`).
+
+### 2. Admin Health & Actuator Panel (Frontend UI)
+Logged-in Admins have access to a dedicated **Health & Actuator** panel:
+* **Live Service Status Cards**: Displays real-time 🟢 **UP** / 🔴 **DOWN** status badges for all 6 microservices.
+* **Component Metrics Summary**: Displays database connection state, available disk storage, and discovery status.
+* **Interactive Actuator JSON Explorer**: Embedded buttons to fetch raw payloads for:
+  * `/actuator/health` — Complete health component tree
+  * `/actuator/metrics` — JVM memory, thread count, CPU usage & HTTP stats
+  * `/actuator/env` — Active profiles and environment properties
+  * `/actuator/beans` — Spring application context dependency graph
+  * `/actuator/mappings` — Exposed REST controller URL mappings
+
+---
+
+## 🔄 Inter-Service Communication
+
+### 1. Synchronous Communication via Spring Cloud OpenFeign
+* **`car-service-operations` ➔ `user-profile-service`**:
+  Uses `@FeignClient(name = "user-profile-service")` to verify customer account validity (`/userprofile/verify-user/{userId}`) before creating a vehicle service booking.
+* **`car-service-operations` ➔ `car-details-validation-service`**:
+  Uses `@FeignClient(name = "car-details-validation-service")` to validate vehicle license plate syntax.
+
+### 2. Asynchronous Communication via Apache Kafka
+* **Event Topic**: `car-service-audit-events`
+* **Producer**: `car-service-operations` publishes JSON audit payloads whenever a vehicle service log is created, updated, or deleted.
+* **Consumer**: `audit-service` (Consumer Group: `audit-group`) consumes events asynchronously and persists them to `carservice_audit_db`.
+
+---
+
+## 👥 Role Permissions & Business Rules
+
+### Database Isolation (Non-overlapping sequential IDs)
+Users are isolated into dedicated MySQL tables:
 * `admin_profiles` (Admin ID prefix: `ADM-`)
 * `mechanic_profiles` (Mechanic ID prefix: `MCH-`)
 * `customer_profiles` (Customer ID prefix: `USR-`)
 
-Each table maintains its own independent auto-increment sequence starting at `1`. For example, `USR-1`, `MCH-1`, and `ADM-1` can coexist with no identifier numbering overlap.
+Each table maintains an independent auto-increment sequence starting at `1` (`USR-1`, `MCH-1`, `ADM-1`).
 
-### Role Permissions Matrix
+### Permissions Matrix
 
-| Feature / Action | Admin | Mechanic | Customer |
+| Action | Admin | Mechanic | Customer |
 | :--- | :---: | :---: | :---: |
-| **Register Service Logs (POST)** | [Yes] | [No] | [No] |
-| **Delete Service Logs (DELETE)** | [Yes] | [No] | [No] |
-| **View All Service Logs (GET)** | [Yes] | [Yes] (Full History) | [No] (Own Only) |
-| **View Personal Logs (GET)** | [Yes] | [Yes] | [Yes] (Filtered to own ID) |
-| **Update Service Status (PUT)** | [Yes] (Any state) | [Yes] (Active states) | [No] |
-| **Revert COMPLETED status** | [Yes] | [No] (Read-Only lock) | [No] |
+| **Create Service Record (POST)** | ✅ Yes | ❌ No | ❌ No |
+| **Delete Service Record (DELETE)** | ✅ Yes | ❌ No | ❌ No |
+| **View All Service Records (GET)** | ✅ Yes | ✅ Yes (Full Fleet) | ❌ No (Own Only) |
+| **View Personal Logs (GET)** | ✅ Yes | ✅ Yes | ✅ Yes (Filtered) |
+| **Update Service Status (PUT)** | ✅ Yes (Any State) | ✅ Yes (Active States) | ❌ No |
+| **Revert COMPLETED Status** | ✅ Yes | ❌ No (Terminal Lock) | ❌ No |
+| **Access Actuator Health Panel** | ✅ Yes | ❌ No | ❌ No |
 
-### Completed State Lock
-Once a service record is marked as `COMPLETED` (terminal workshop state):
-* **Mechanics** cannot change it. The dropdown is hidden in the UI and replaced with a lock icon, and backend requests to `/status` from a mechanic return `403 Forbidden`.
-* **Admins** maintain override control and can revert the status back to any previous state (e.g. `IN_PROGRESS` or `PENDING`) if corrections are required.
+### Completed State Terminal Lock
+When a vehicle service is marked as `COMPLETED`:
+* **Mechanics**: Read-only lock enforced. The status dropdown is replaced with a lock icon, and direct API calls return `403 Forbidden`.
+* **Admins**: Retain override capabilities to revert status to `IN_PROGRESS` or `PENDING` if corrections are required.
 
 ---
 
-## Setup & Running Guide
+## 🚀 Setup & Execution Guide
 
 ### 1. Prerequisites
-Ensure you have the following installed on your machine:
-* **Java Development Kit (JDK) 21**
-* **MySQL Server** (Running on port `3306` with credentials `username: root`, `password: root`)
+* **JDK 21** installed and configured on `PATH`
+* **MySQL 8.0** running on port `3306` (`username: root`, `password: root`)
 * **Apache Kafka** & **ZooKeeper**
 
-### 2. Startup Kafka and ZooKeeper
-Start ZooKeeper followed by the Apache Kafka broker. Open a terminal in your Kafka installation directory:
+### 2. Start ZooKeeper & Apache Kafka
+Open a terminal in your Kafka installation directory:
 
-#### On Windows (Command Prompt / PowerShell)
-1. Start ZooKeeper in Terminal 1:
-   ```cmd
-   .\bin\windows\zookeeper-server-start.bat .\config\zookeeper.properties
-   ```
-2. Start the Kafka broker in Terminal 2:
-   ```cmd
-   .\bin\windows\kafka-server-start.bat .\config\server.properties
-   ```
+#### Windows (Command Prompt / PowerShell)
+```cmd
+# Terminal 1: Start ZooKeeper
+.\bin\windows\zookeeper-server-start.bat .\config\zookeeper.properties
 
-#### On Linux / macOS
-1. Start ZooKeeper in Terminal 1:
-   ```bash
-   ./bin/zookeeper-server-start.sh ./config/zookeeper.properties
-   ```
-2. Start the Kafka broker in Terminal 2:
-   ```bash
-   ./bin/kafka-server-start.sh ./config/server.properties
-   ```
+# Terminal 2: Start Kafka Broker
+.\bin\windows\kafka-server-start.bat .\config\server.properties
+```
 
-Keep both terminals open while running the application.
+#### Linux / macOS
+```bash
+# Terminal 1: Start ZooKeeper
+./bin/zookeeper-server-start.sh ./config/zookeeper.properties
 
-### 3. Startup the Microservices
-In your IDE (e.g. Spring Tool Suite / Eclipse), import all 6 Maven projects. Run them as **Spring Boot App** in the following order:
-1. **`eureka-discovery-server`** (Wait for Dashboard to launch on http://localhost:8761)
+# Terminal 2: Start Kafka Broker
+./bin/kafka-server-start.sh ./config/server.properties
+```
+
+### 3. Launch Microservices
+In your IDE (e.g., Spring Tool Suite / Eclipse / IntelliJ IDEA), start the projects in the following order:
+1. **`eureka-discovery-server`** (Verify UI at http://localhost:8761)
 2. **`user-profile-service`**
 3. **`api-gateway`**
 4. **`car-details-validation-service`**
 5. **`car-service-operations`**
 6. **`audit-service`**
 
-### 4. Running the Frontend
-1. Open the [car-service-frontend](file:///c:/Users/aakri/OneDrive/Pictures/microservices/car-service-frontend) directory.
-2. Double-click the **`index.html`** file to run the web dashboard directly in your browser.
-3. Access the portal:
-   * **Login as Admin**: `username: admin`, `password: adminpassword`
-   * **Register new users** (Mechanics or Customers) using the *User Profiles* tab.
+*Note: `user-profile-service` automatically seeds a default Admin account on initial startup (`username: admin`, `password: adminpassword`).*
 
-### 5. Accessing Swagger Documentation
-To test or interact with endpoints programmatically, open:
-[http://localhost:8765/swagger-ui.html](http://localhost:8765/swagger-ui.html)
-* Select the service from the dropdown on the top-right corner to toggle API definitions.
-* Paste your bearer JWT token into the **Authorize** lock to make authenticated calls.
+### 4. Launch Web Frontend
+1. Open the [`car-service-frontend`](file:///c:/Users/aakri/OneDrive/Pictures/microservices/car-service-frontend) directory.
+2. Open **`index.html`** in any web browser.
+3. Log in as Admin (`admin` / `adminpassword`) or register new Mechanics/Customers.
 
-### 6. Executing Unit Tests
-To run unit and integration tests, open a terminal in any microservice directory and execute:
-```bash
-mvn test
-```
-All projects contain comprehensive unit tests covering validation checks, mock clients, happy paths, and Edge Case exceptions.
+### 5. Access Swagger API Documentation
+Open [http://localhost:8765/swagger-ui.html](http://localhost:8765/swagger-ui.html) to test REST endpoints interactively across all microservices.
+
+---
+
+## 📜 License & Author
+
+Developed for **Car Operations Management**. Open-source project built with Java 21, Spring Boot 3, Spring Cloud, Kafka, and Vanilla Web Technologies.
