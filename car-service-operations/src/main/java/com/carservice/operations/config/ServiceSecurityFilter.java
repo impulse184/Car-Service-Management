@@ -25,17 +25,19 @@ public class ServiceSecurityFilter implements Filter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        // Bypass security for CORS preflight, swagger docs, and actuator endpoints
-        if (method.equalsIgnoreCase("OPTIONS") ||
-            path.contains("/actuator") ||
-            path.contains("/swagger-ui") ||
-            path.contains("/v3/api-docs") ||
-            path.contains("/webjars")) {
+        // 1. Allow CORS preflight OPTIONS requests
+        if (method.equalsIgnoreCase("OPTIONS")) {
             chain.doFilter(req, res);
             return;
         }
 
-        // Check for direct Authorization header or Gateway injected headers
+        // 2. Allow Swagger UI documentation
+        if (path.contains("/swagger-ui") || path.contains("/v3/api-docs") || path.contains("/webjars")) {
+            chain.doFilter(req, res);
+            return;
+        }
+
+        // 3. Enforce authentication for all other requests (including Actuator & direct URLs)
         String authHeader = request.getHeader("Authorization");
         String gatewayRoleHeader = request.getHeader("X-Authenticated-Role");
 
