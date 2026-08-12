@@ -13,36 +13,36 @@ A highly resilient, secure, and modern microservices-based Car Service Managemen
 ```mermaid
 graph TD
     subgraph Client Layer
-        UI[Web Frontend Dashboard]
+        UI["Web Frontend Dashboard"]
     end
 
     subgraph Edge Layer
-        GW[API Gateway :8765<br/>(JWT Auth, RBAC, CORS, Swagger Aggregator)]
+        GW["API Gateway :8765<br/>(JWT Auth, RBAC, CORS, Swagger Aggregator)"]
     end
 
     subgraph Service Discovery
-        EUK[Eureka Discovery Server :8761]
+        EUK["Eureka Discovery Server :8761"]
     end
 
     subgraph Core Microservices Layer
-        UP[User Profile Service :8081<br/>(Service-Level JWT Security Filter)]
-        OPS[Car Service Operations :8082<br/>(Service-Level JWT Security Filter)]
-        VAL[Car Details Validation Service :8083<br/>(Service-Level JWT Security Filter)]
-        AUD[Audit Logging Service :8084<br/>(Service-Level JWT Security Filter)]
+        UP["User Profile Service :8081<br/>(Service-Level JWT Security Filter)"]
+        OPS["Car Service Operations :8082<br/>(Service-Level JWT Security Filter)"]
+        VAL["Car Details Validation Service :8083<br/>(Service-Level JWT Security Filter)"]
+        AUD["Audit Logging Service :8084<br/>(Service-Level JWT Security Filter)"]
     end
 
     subgraph Persistence Layer
-        DB_UP[(carservice_user_db)]
-        DB_OPS[(carservice_ops_db)]
-        DB_AUD[(carservice_audit_db)]
+        DB_UP[("carservice_user_db")]
+        DB_OPS[("carservice_ops_db")]
+        DB_AUD[("carservice_audit_db")]
     end
 
     subgraph Event Streaming
-        KFK[Apache Kafka Broker :9092<br/>(Topic: car-service-audit-events)]
+        KFK["Apache Kafka Broker :9092<br/>(Topic: car-service-audit-events)"]
     end
 
     subgraph Actuator Health Monitoring
-        ACT[Admin Actuator Panel<br/>(Live Status Cards & JSON Explorer)]
+        ACT["Admin Actuator Panel<br/>(Live Status Cards & JSON Explorer)"]
     end
 
     %% Routing & Client Interactions
