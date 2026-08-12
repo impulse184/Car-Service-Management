@@ -34,8 +34,11 @@ public class ServiceSecurityFilter implements Filter {
             return;
         }
 
-        // 2. Allow Swagger UI documentation
-        if (path.contains("/swagger-ui") || path.contains("/v3/api-docs") || path.contains("/webjars")) {
+        // 2. Allow Swagger UI documentation and public health checks
+        if (path.contains("/swagger-ui") || 
+            path.contains("/v3/api-docs") || 
+            path.contains("/webjars") ||
+            path.endsWith("/actuator/health")) {
             chain.doFilter(req, res);
             return;
         }

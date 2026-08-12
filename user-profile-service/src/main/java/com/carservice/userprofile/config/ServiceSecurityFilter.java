@@ -34,19 +34,17 @@ public class ServiceSecurityFilter implements Filter {
             return;
         }
 
-        // 2. Allow Swagger UI documentation
-        if (path.contains("/swagger-ui") || path.contains("/v3/api-docs") || path.contains("/webjars")) {
+        // 2. Allow Swagger UI documentation, public login/registration, and public health checks
+        if (path.contains("/swagger-ui") || 
+            path.contains("/v3/api-docs") || 
+            path.contains("/webjars") ||
+            path.endsWith("/actuator/health") ||
+            (method.equalsIgnoreCase("POST") && (path.contains("/login") || path.contains("/register") || path.endsWith("/userprofile")))) {
             chain.doFilter(req, res);
             return;
         }
 
-        // 3. Allow Public Login & User Registration POST endpoints
-        if (method.equalsIgnoreCase("POST") && (path.contains("/login") || path.contains("/register") || path.endsWith("/userprofile"))) {
-            chain.doFilter(req, res);
-            return;
-        }
-
-        // 4. Require valid JWT Bearer token or Gateway authentication header for ALL other endpoints
+        // 3. Require valid JWT Bearer token or Gateway authentication header for ALL other endpoints
         String authHeader = request.getHeader("Authorization");
         String gatewayRoleHeader = request.getHeader("X-Authenticated-Role");
 
