@@ -4,7 +4,7 @@ A highly resilient, secure, and modern microservices-based Car Service Managemen
 
 ---
 
-## 🎨 System Architecture Diagram
+## System Architecture Diagram
 
 ![System Architecture Diagram](architecture_diagram.png)
 
@@ -105,7 +105,7 @@ graph TD
 
 ---
 
-## 🧩 Microservices Overview
+## Microservices Overview
 
 The application comprises **6 independent, container-ready Maven microservices**:
 
@@ -120,7 +120,7 @@ The application comprises **6 independent, container-ready Maven microservices**
 
 ---
 
-## 🔒 Dual-Layer Security Architecture
+## Dual-Layer Security Architecture
 
 The application implements a robust **Dual-Layer Defense-in-Depth Security Model**:
 
@@ -144,7 +144,7 @@ The application implements a robust **Dual-Layer Defense-in-Depth Security Model
 
 ---
 
-## 📊 Health Monitoring & Actuator Dashboard
+## Health Monitoring & Actuator Dashboard
 
 Spring Boot Actuator is integrated into **all 6 microservices** to provide full operational visibility:
 
@@ -167,7 +167,7 @@ Logged-in Admins have access to a dedicated **Health & Actuator** panel:
 
 ---
 
-## 🔄 Inter-Service Communication
+## Inter-Service Communication
 
 ### 1. Synchronous Communication via Spring Cloud OpenFeign
 * **`car-service-operations` ➔ `user-profile-service`**:
@@ -182,7 +182,7 @@ Logged-in Admins have access to a dedicated **Health & Actuator** panel:
 
 ---
 
-## 👥 Role Permissions & Business Rules
+## Role Permissions & Business Rules
 
 ### Database Isolation (Non-overlapping sequential IDs)
 Users are isolated into dedicated MySQL tables:
@@ -211,7 +211,7 @@ When a vehicle service is marked as `COMPLETED`:
 
 ---
 
-## 🚀 Setup & Execution Guide
+## Setup & Execution Guide
 
 ### 1. Prerequisites
 * **JDK 21** installed and configured on `PATH`
@@ -260,6 +260,6 @@ Open [http://localhost:8765/swagger-ui.html](http://localhost:8765/swagger-ui.ht
 
 ---
 
-## 📜 License & Author
+## License & Author
 
 Developed for **Car Operations Management**. Open-source project built with Java 21, Spring Boot 3, Spring Cloud, Kafka, and Vanilla Web Technologies.
